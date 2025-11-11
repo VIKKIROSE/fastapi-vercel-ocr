@@ -1,22 +1,30 @@
-# api/main.py
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-import easyocr
-import io
-from PIL import Image
+from fastapi import FastAPI, UploadFile, File
+import requests
 
 app = FastAPI()
-reader = easyocr.Reader(['en'], gpu=False)
+
+OCR_API_URL = "https://api.ocr.space/parse/image"
+API_KEY = "helloworld"  # free demo key from OCR.Space
 
 @app.get("/")
-def root():
-    return {"message": "FastAPI on Vercel works!"}
+async def root():
+    return {"status": "OK", "message": "FastAPI OCR running on Vercel"}
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    contents = await file.read()
-    image = Image.open(io.BytesIO(contents))
-    image.save("/tmp/temp.png")  # temp file for OCR
-    result = reader.readtext("/tmp/temp.png", detail=0)
-    text = ''.join(result)
-    return JSONResponse({"filename": file.filename, "text": text})
+@app.post("/ocr")
+async def ocr(file: UploadFile = File(...)):
+    # Read uploaded file
+    content = await file.read()
+
+    # Send to OCR.Space API
+    response = requests.post(
+        OCR_API_URL,
+        files={"file": (file.filename, content)},
+        data={"apikey": API_KEY, "language": "eng"}
+    )
+
+    data = response.json()
+    if not data.get("IsErroredOnProcessing"):
+        text = data["ParsedResults"][0]["ParsedText"]
+        return {"success": True, "text": text.strip()}
+    else:
+        return {"success": False, "error": data.get("ErrorMessage")}
