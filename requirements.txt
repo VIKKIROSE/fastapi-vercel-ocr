@@ -1,5 +1,4 @@
 fastapi
 uvicorn
-pillow
-easyocr
+requests
 python-multipart
